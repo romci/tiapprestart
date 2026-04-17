@@ -10,6 +10,8 @@
 #import "TiUtils.h"
 #import "TiLayoutQueue.h"
 
+static BOOL gRestartInProgress = NO;
+
 @implementation InfoRbornTiapprestartModule
 
 #pragma mark Internal
@@ -30,6 +32,10 @@
 
 -(void)restartApp:(id)unused
 {
+    if (gRestartInProgress) {
+        return;
+    }
+    gRestartInProgress = YES;
     TiThreadPerformOnMainThread(^{
         [[[TiApp app] controller] shutdownUi:self];
     }, NO);
@@ -76,6 +82,7 @@
             [appDelegate application:app didFinishLaunchingWithOptions:[appDelegate launchOptions]];
             [appDelegate applicationWillEnterForeground:app];
             [appDelegate applicationDidBecomeActive:app];
+            gRestartInProgress = NO;
         }
     });
 }
