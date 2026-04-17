@@ -46,10 +46,13 @@
     [appDelegate applicationDidEnterBackground:app];
     [appDelegate endBackgrounding];
     /* End backgrounding simulation */
-    
-    /* Disconnect the old view system, intentionally leak controller and UIWindow */
-    [[appDelegate window] removeFromSuperview];
-    
+
+    /* Tear down the old view system inside an autorelease pool so iOS 26
+       releases the old UINavigationController fully before the new one is built. */
+    @autoreleasepool {
+        [[appDelegate window] removeFromSuperview];
+    }
+
     /* Disconnect the old modules. */
     NSNotificationCenter * nc = [NSNotificationCenter defaultCenter];
     NSMutableArray * delegateModules = (NSMutableArray *)[appDelegate valueForKey:@"modules"];
@@ -59,17 +62,22 @@
     /* Because of other issues, we must leak the modules as well as the runtime */
     [delegateModules copy];
     [delegateModules removeAllObjects];
-    
+
     /* Disconnect the Kroll bridge, and spoof the shutdown */
     [nc removeObserver:[appDelegate krollBridge]];
     NSNotification *notification = [NSNotification notificationWithName:kTiContextShutdownNotification object:[appDelegate krollBridge]];
     [nc postNotification:notification];
-    
-    /* Begin foregrounding simulation */
-    [appDelegate application:app didFinishLaunchingWithOptions:[appDelegate launchOptions]];
-    [appDelegate applicationWillEnterForeground:app];
-    [appDelegate applicationDidBecomeActive:app];
-    /* End foregrounding simulation */
+
+    /* Defer re-launch to the next run loop cycle so the old UINavigationController
+       and UIWindow are fully deallocated by UIKit before the new hierarchy is built.
+       This prevents the iOS 26 "Cannot form weak reference to deallocating object" abort. */
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @autoreleasepool {
+            [appDelegate application:app didFinishLaunchingWithOptions:[appDelegate launchOptions]];
+            [appDelegate applicationWillEnterForeground:app];
+            [appDelegate applicationDidBecomeActive:app];
+        }
+    });
 }
 
 @end

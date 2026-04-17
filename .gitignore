@@ -3,3 +3,5 @@ build
 dist
 tiapprestart.xcodeproj/xcuserdata/*.xcuserdatad
 tiapprestart.xcodeproj/project.xcworkspace/xcuserdata/*.xcuserdatad
+DerivedData
+.specstory

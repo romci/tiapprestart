@@ -23,24 +23,18 @@
                                   }];
     return;
   }
+
   //At this point all modal stuff is done. Go ahead and clean up proxies.
   NSArray *modalCopy = [modalWindows copy];
   NSArray *windowCopy = [containedWindows copy];
 
-  if (modalCopy != nil) {
-    for (TiViewProxy *theWindow in [modalCopy reverseObjectEnumerator]) {
-      [theWindow windowWillClose];
-      [theWindow windowDidClose];
-    }
-    [modalCopy release];
-  }
-  if (windowCopy != nil) {
-    for (TiViewProxy *theWindow in [windowCopy reverseObjectEnumerator]) {
-      [theWindow windowWillClose];
-      [theWindow windowDidClose];
-    }
-    [windowCopy release];
-  }
+  /* On iOS 26+, calling windowWillClose/windowDidClose triggers a UINavigationController
+     deallocation cascade that causes "Cannot form weak reference to deallocating object"
+     aborts. Since _resumeRestart already leaks the entire UIWindow hierarchy intentionally,
+     these close notifications are unnecessary — the JS runtime is being torn down anyway.
+     Orphan modal and contained windows without actively closing them. */
+  [modalCopy release];
+  [windowCopy release];
 
   DebugLog(@"[INFO] UI SHUTDOWN COMPLETE. TRYING TO RESUME RESTART");
   if ([arg respondsToSelector:@selector(_resumeRestart:)]) {
